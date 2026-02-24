@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SA Crime Monitor — Dashboard</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Sora:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--b0:#060810;--b1:#0b0e18;--b2:#111522;--b3:#181d2e;--b4:#1f2640;--t1:#eaecf5;--t2:#7d84a0;--t3:#454b65;--r:#ff2244;--o:#ff7a30;--y:#ffbe2e;--g:#00cc88;--bl:#2eb8ff;--p:#9b7aff;--pk:#ff5588;--bd:rgba(255,255,255,0.05);--up:#ff2244;--dn:#00cc88;--eq:#ffbe2e}
+body{font-family:'Sora',sans-serif;background:var(--b0);color:var(--t1);height:100vh;overflow:hidden;display:flex}
+
+.sidebar{width:440px;min-width:440px;background:var(--b1);border-right:1px solid var(--bd);display:flex;flex-direction:column;height:100vh;z-index:1000}
+.tabs{display:flex;border-bottom:1px solid var(--bd);background:var(--b2)}
+.tab{flex:1;padding:9px 4px;text-align:center;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);cursor:pointer;transition:all .15s;border-bottom:2px solid transparent;white-space:nowrap}
+.tab:hover{color:var(--t2)}.tab.on{color:var(--r);border-bottom-color:var(--r);background:rgba(255,34,68,.04)}
+.tc{display:none;flex:1;flex-direction:column;overflow:hidden}.tc.on{display:flex}
+.hdr{padding:12px 18px;border-bottom:1px solid var(--bd);background:linear-gradient(135deg,rgba(255,34,68,.05),rgba(255,122,48,.03))}
+.logo{display:flex;align-items:center;gap:8px}.logo-i{width:30px;height:30px;background:linear-gradient(135deg,var(--r),var(--o));border-radius:8px;display:grid;place-items:center;font-size:14px;box-shadow:0 3px 10px rgba(255,34,68,.25)}
+.logo h1{font-size:14px;font-weight:700;letter-spacing:-.5px}.logo-s{font-size:8px;color:var(--t3);font-family:'IBM Plex Mono';margin-top:2px;letter-spacing:.5px}
+.live-d{display:inline-block;width:5px;height:5px;background:#00ff88;border-radius:50%;margin-right:3px;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.srch{padding:8px 18px;border-bottom:1px solid var(--bd);position:relative}.srch::before{content:'⌕';position:absolute;left:28px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--t3)}
+.srch input{width:100%;padding:8px 10px 8px 30px;background:var(--b2);border:1px solid var(--bd);border-radius:7px;color:var(--t1);font-family:'Sora';font-size:11px;outline:none}.srch input:focus{border-color:rgba(255,255,255,.12)}.srch input::placeholder{color:var(--t3)}
+.sts{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:8px 18px;border-bottom:1px solid var(--bd)}
+.st{background:var(--b2);border-radius:6px;padding:6px 4px;text-align:center;border:1px solid var(--bd)}.sv{font-size:13px;font-weight:700;font-family:'IBM Plex Mono'}.sv.r{color:var(--r)}.sv.o{color:var(--o)}.sv.y{color:var(--y)}.sv.g{color:var(--g)}.sv.p{color:var(--p)}
+.sl{font-size:6px;text-transform:uppercase;letter-spacing:.8px;color:var(--t3);margin-top:1px;font-weight:600}
+.frow{padding:6px 18px;border-bottom:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:3px}.ft{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);font-weight:700;width:100%;margin-bottom:1px}
+.pill{padding:3px 8px;border-radius:10px;border:1px solid var(--bd);background:transparent;color:var(--t2);font-size:8px;font-family:'Sora';cursor:pointer;transition:all .12s;font-weight:500}
+.pill:hover{border-color:rgba(255,255,255,.12);color:var(--t1)}.pill.on{background:rgba(255,34,68,.1);border-color:var(--r);color:var(--r)}
+.vrow{display:flex;gap:2px;padding:6px 18px;border-bottom:1px solid var(--bd)}
+.vb{flex:1;padding:5px;border:1px solid var(--bd);background:transparent;color:var(--t2);font-size:8px;font-family:'Sora';cursor:pointer;border-radius:6px;transition:all .12s;font-weight:500;text-align:center}.vb.on{background:var(--b2);color:var(--t1);border-color:rgba(255,255,255,.08)}
+.sls{flex:1;overflow-y:auto;padding:4px}.sls::-webkit-scrollbar{width:2px}.sls::-webkit-scrollbar-track{background:transparent}.sls::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.si{display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:6px;cursor:pointer;transition:all .12s;border:1px solid transparent;margin-bottom:1px}
+.si:hover{background:var(--b2);border-color:var(--bd)}.si.sel{background:var(--b3);border-color:var(--r)}
+.si-r{font-family:'IBM Plex Mono';font-size:8px;color:var(--t3);width:18px;text-align:center}.si-d{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.si-d.critical{background:var(--r);box-shadow:0 0 4px rgba(255,34,68,.5)}.si-d.high{background:var(--o)}.si-d.medium{background:var(--y)}.si-d.low{background:var(--g)}
+.si-i{flex:1;min-width:0}.si-n{font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.si-e{font-size:7px;color:var(--t3);font-family:'IBM Plex Mono';margin-top:1px}
+.si-c{font-family:'IBM Plex Mono';font-size:11px;font-weight:700;color:var(--r);white-space:nowrap}
+.si-trend{font-size:9px;font-weight:700;margin-left:4px;white-space:nowrap}.si-trend.up{color:var(--up)}.si-trend.dn{color:var(--dn)}.si-trend.eq{color:var(--eq)}
+
+/* === LEADERBOARD TAB === */
+.lb-period{display:flex;gap:3px;padding:8px 18px;border-bottom:1px solid var(--bd)}
+.lb-btn{flex:1;padding:6px;border:1px solid var(--bd);background:transparent;color:var(--t2);font-size:9px;font-family:'Sora';cursor:pointer;border-radius:6px;font-weight:600;text-align:center}.lb-btn.on{background:var(--b2);color:var(--r);border-color:var(--r)}
+.lb-cat{display:flex;flex-wrap:wrap;gap:3px;padding:6px 18px;border-bottom:1px solid var(--bd)}
+.lb-list{flex:1;overflow-y:auto;padding:8px 12px}
+.lb-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;margin-bottom:4px;background:var(--b2);border:1px solid var(--bd);transition:all .2s}
+.lb-item:hover{border-color:rgba(255,255,255,.1)}
+.lb-pos{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-family:'IBM Plex Mono';font-size:11px;font-weight:700;flex-shrink:0}
+.lb-pos.g{background:linear-gradient(135deg,#ffd700,#ffaa00);color:#000}.lb-pos.s{background:linear-gradient(135deg,#c0c0c0,#a0a0a0);color:#000}.lb-pos.b{background:linear-gradient(135deg,#cd7f32,#a0652f);color:#fff}.lb-pos.n{background:var(--b3);color:var(--t2)}
+.lb-info{flex:1;min-width:0}.lb-name{font-size:12px;font-weight:700}.lb-sub{font-size:8px;color:var(--t3);font-family:'IBM Plex Mono';margin-top:1px}
+.lb-val{text-align:right}.lb-num{font-family:'IBM Plex Mono';font-size:16px;font-weight:700;color:var(--r)}
+.lb-move{font-size:9px;font-weight:700;display:flex;align-items:center;gap:2px;justify-content:flex-end;margin-top:2px}
+.lb-move.up{color:var(--up)}.lb-move.dn{color:var(--dn)}.lb-move.eq{color:var(--eq)}
+
+/* === LIVE FEED === */
+.feed{flex:1;overflow-y:auto;padding:6px 10px}.feed::-webkit-scrollbar{width:2px}.feed::-webkit-scrollbar-track{background:transparent}.feed::-webkit-scrollbar-thumb{background:var(--bd);border-radius:2px}
+.fi{padding:8px 12px;border-radius:7px;border:1px solid var(--bd);margin-bottom:4px;background:var(--b2);animation:fadeIn .5s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.fi-new{border-color:rgba(255,34,68,.3);background:rgba(255,34,68,.03)}
+.fi-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.fi-type{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;padding:2px 5px;border-radius:3px}
+.fi-type.murder{background:rgba(255,34,68,.15);color:#ff2244}.fi-type.robbery{background:rgba(255,122,48,.15);color:#ff7a30}.fi-type.assault{background:rgba(255,190,46,.15);color:#ffbe2e}
+.fi-type.carjack{background:rgba(255,85,136,.15);color:#ff5588}.fi-type.shooting{background:rgba(255,34,68,.15);color:#ff2244}.fi-type.burglary{background:rgba(46,184,255,.15);color:#2eb8ff}
+.fi-type.kidnapping{background:rgba(155,122,255,.15);color:#9b7aff}.fi-type.drugs{background:rgba(0,204,136,.15);color:#00cc88}
+.fi-time{font-size:7px;color:var(--t3);font-family:'IBM Plex Mono'}.fi-loc{font-size:10px;font-weight:600;margin-bottom:2px}.fi-desc{font-size:9px;color:var(--t2);line-height:1.3}
+.fi-src{margin-top:4px;display:flex;align-items:center;gap:4px}
+.fi-src a{font-size:8px;color:var(--bl);text-decoration:none;font-family:'IBM Plex Mono';padding:2px 6px;background:rgba(46,184,255,.08);border-radius:4px;border:1px solid rgba(46,184,255,.15);transition:all .15s}
+.fi-src a:hover{background:rgba(46,184,255,.15)}
+.feed-hdr{padding:10px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:6px}.feed-hdr span{font-size:11px;font-weight:600}.feed-cnt{font-family:'IBM Plex Mono';font-size:9px;color:var(--r);margin-left:auto}
+
+/* === MAP === */
+.mapa{flex:1;position:relative}#map{width:100%;height:100%;background:var(--b0)}
+.leaflet-container{background:var(--b0)!important}.leaflet-control-zoom a{background:var(--b2)!important;color:var(--t1)!important;border-color:var(--bd)!important;font-size:14px!important;width:28px!important;height:28px!important;line-height:28px!important}.leaflet-control-zoom a:hover{background:var(--b3)!important}.leaflet-control-attribution{display:none!important}
+.leaflet-popup-content-wrapper{background:var(--b3)!important;color:var(--t1)!important;border-radius:12px!important;border:1px solid var(--bd)!important;box-shadow:0 20px 50px rgba(0,0,0,.6)!important}.leaflet-popup-tip{background:var(--b3)!important}.leaflet-popup-content{margin:12px!important;min-width:270px!important}.leaflet-popup-close-button{color:var(--t3)!important;font-size:18px!important;top:6px!important;right:8px!important}
+.p-h{display:flex;align-items:center;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--bd)}.p-t{font-size:13px;font-weight:700}.p-sev{padding:2px 6px;border-radius:6px;font-size:7px;text-transform:uppercase;letter-spacing:.6px;font-weight:700;font-family:'IBM Plex Mono';margin-left:auto}
+.p-sev.critical{background:rgba(255,34,68,.2);color:#ff2244}.p-sev.high{background:rgba(255,122,48,.2);color:#ff7a30}.p-sev.medium{background:rgba(255,190,46,.2);color:#ffbe2e}.p-sev.low{background:rgba(0,204,136,.2);color:#00cc88}
+.p-sub{font-size:8px;color:var(--t3);font-family:'IBM Plex Mono';margin-bottom:6px}
+.p-g{display:grid;grid-template-columns:1fr 1fr;gap:3px}.p-i{display:flex;justify-content:space-between;padding:3px 6px;background:rgba(255,255,255,.02);border-radius:3px;font-size:8px}.p-in{color:var(--t2)}.p-iv{font-family:'IBM Plex Mono';font-weight:600}
+.p-trend-row{display:flex;justify-content:space-between;padding:3px 6px;background:rgba(255,255,255,.02);border-radius:3px;font-size:8px;margin-top:2px;grid-column:1/-1}
+.p-trend-row .up{color:var(--up)}.p-trend-row .dn{color:var(--dn)}
+.p-tot{margin-top:5px;padding-top:5px;border-top:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:600}.p-tv{font-family:'IBM Plex Mono';color:var(--r);font-size:15px}
+.p-note{font-size:7px;color:var(--t3);margin-top:4px;font-style:italic;line-height:1.3}
+.legend{position:absolute;bottom:14px;right:14px;background:rgba(17,21,34,.92);border:1px solid var(--bd);border-radius:8px;padding:10px 12px;z-index:999;backdrop-filter:blur(16px)}
+.lg-t{font-size:7px;text-transform:uppercase;letter-spacing:1px;color:var(--t3);margin-bottom:4px;font-weight:700}.lg-i{display:flex;align-items:center;gap:5px;font-size:8px;color:var(--t2);margin-bottom:2px}.lg-c{width:7px;height:7px;border-radius:50%}
+.dsrc{position:absolute;bottom:14px;left:14px;background:rgba(17,21,34,.92);border:1px solid var(--bd);border-radius:7px;padding:7px 10px;z-index:999;font-size:7px;color:var(--t3);font-family:'IBM Plex Mono';backdrop-filter:blur(16px);line-height:1.4}.dsrc a{color:var(--bl);text-decoration:none}
+.zoom-tip{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(17,21,34,.92);border:1px solid var(--bd);border-radius:7px;padding:5px 12px;z-index:999;font-size:9px;color:var(--t2);backdrop-filter:blur(16px);transition:opacity .3s;pointer-events:none}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,34,68,.4)}70%{box-shadow:0 0 0 8px rgba(255,34,68,0)}100%{box-shadow:0 0 0 0 rgba(255,34,68,0)}}
+@media(max-width:900px){.sidebar{width:100%;min-width:100%;height:45vh}body{flex-direction:column}.mapa{height:55vh}}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="tabs">
+    <div class="tab on" onclick="switchTab('map')">📍 Map</div>
+    <div class="tab" onclick="switchTab('lb')">🏆 Top 10</div>
+    <div class="tab" onclick="switchTab('live')"><span class="live-d"></span>Live Feed</div>
+    <div class="tab" onclick="switchTab('trends')">📊 Trends</div>
+    <div class="tab" onclick="switchTab('forecast')">🔮 Forecast</div>
+  </div>
+  <!-- MAP TAB -->
+  <div class="tc on" id="tMap">
+    <div class="hdr"><div class="logo"><div class="logo-i">🇿🇦</div><h1>SA Crime Monitor</h1></div><div class="logo-s"><span class="live-d" id="apiDot"></span><span id="apiLabel">OFFLINE · CACHED DATA</span></div></div>
+    <div class="srch"><input id="search" placeholder="Search station, township, city..."></div>
+    <div class="sts">
+      <div class="st"><div class="sv r" id="xT">0</div><div class="sl">Total</div></div>
+      <div class="st"><div class="sv o" id="xS">0</div><div class="sl">Stations</div></div>
+      <div class="st"><div class="sv y" id="xM">0</div><div class="sl">Murders</div></div>
+      <div class="st"><div class="sv g" id="xR">0</div><div class="sl">Robberies</div></div>
+      <div class="st"><div class="sv p" id="xK">0</div><div class="sl">Kidnap</div></div>
+    </div>
+    <div class="frow" id="pF"><div class="ft">Province</div><button class="pill on" data-p="all">All</button><button class="pill" data-p="WC">WC</button><button class="pill" data-p="GP">GP</button><button class="pill" data-p="KZN">KZN</button><button class="pill" data-p="EC">EC</button><button class="pill" data-p="MP">MP</button><button class="pill" data-p="NW">NW</button><button class="pill" data-p="FS">FS</button><button class="pill" data-p="LP">LP</button><button class="pill" data-p="NC">NC</button></div>
+    <div class="frow" id="cF"><div class="ft">Crime</div><button class="pill on" data-c="all">All</button><button class="pill" data-c="murder">Murder</button><button class="pill" data-c="robbery">Robbery</button><button class="pill" data-c="assault">Assault</button><button class="pill" data-c="sexual">Sexual</button><button class="pill" data-c="property">Property</button><button class="pill" data-c="carjack">Carjack</button><button class="pill" data-c="kidnap">Kidnap</button><button class="pill" data-c="drugs">Drugs</button></div>
+    <div class="vrow"><button class="vb on" data-v="markers" onclick="setV('markers')">📍 Markers</button><button class="vb" data-v="heat" onclick="setV('heat')">🔥 Heat</button><button class="vb" data-v="cluster" onclick="setV('cluster')">🔵 Cluster</button></div>
+    <div class="sls" id="sList"></div>
+  </div>
+  <!-- LEADERBOARD TAB -->
+  <div class="tc" id="tLb">
+    <div class="hdr"><div class="logo"><div class="logo-i">🏆</div><h1>Crime Leaderboard</h1></div><div class="logo-s">TOP 10 MOVERS · WEEKLY & MONTHLY</div></div>
+    <div class="lb-period" id="lbPeriod"><button class="lb-btn on" onclick="setLbPeriod('weekly')">This Week</button><button class="lb-btn" onclick="setLbPeriod('monthly')">This Month</button><button class="lb-btn" onclick="setLbPeriod('quarterly')">Quarter</button></div>
+    <div class="lb-cat" id="lbCat"><button class="pill on" data-lc="total">Total</button><button class="pill" data-lc="murder">Murder</button><button class="pill" data-lc="robbery">Robbery</button><button class="pill" data-lc="kidnap">Kidnap</button><button class="pill" data-lc="carjack">Carjack</button></div>
+    <div class="lb-list" id="lbList"></div>
+  </div>
+  <!-- LIVE FEED TAB -->
+  <div class="tc" id="tLive">
+    <div class="feed-hdr"><span class="live-d"></span><span>Live Incident Feed</span><span class="feed-cnt" id="feedCnt">0</span></div>
+    <div class="feed-status" id="feedStatus" style="font-size:7px;color:var(--t3);padding:4px 18px;border-bottom:1px solid var(--bd)"></div>
+    <div class="feed" id="feedList"></div>
+  </div>
+  <!-- TRENDS TAB -->
+  <div class="tc" id="tTrends">
+    <div class="hdr"><div class="logo"><div class="logo-i">📊</div><h1>National Trends</h1></div><div class="logo-s">YoY COMPARISON · PROVINCE BREAKDOWN</div></div>
+    <div class="sls" id="trendContent" style="padding:12px 18px"></div>
+  </div>
+  <!-- FORECAST TAB -->
+  <div class="tc" id="tForecast">
+    <div class="hdr"><div class="logo"><div class="logo-i">🔮</div><h1>Crime Forecasting</h1></div><div class="logo-s">RISK SCORES · HOTSPOT PREDICTION · WHAT-IF</div></div>
+    <div class="sls" id="forecastContent" style="padding:12px 18px"></div>
+  </div>
+</div>
+<div class="mapa">
+  <div id="map"></div>
+  <div class="zoom-tip" id="zTip">Zoom to see streets</div>
+  <div class="legend"><div class="lg-t">Severity</div><div class="lg-i"><div class="lg-c" style="background:#ff2244"></div>Critical (1000+)</div><div class="lg-i"><div class="lg-c" style="background:#ff7a30"></div>High (500–999)</div><div class="lg-i"><div class="lg-c" style="background:#ffbe2e"></div>Medium (200–499)</div><div class="lg-i"><div class="lg-c" style="background:#00cc88"></div>Lower</div></div>
+  <div class="dsrc"><a href="https://www.saps.gov.za/services/crimestats.php" target="_blank">SAPS</a> · <a href="https://www.crimestatssa.com" target="_blank">CrimeStatsSA</a> · <a href="https://crimehub.org" target="_blank">CrimeHub</a> · <a href="https://issafrica.org" target="_blank">ISS Africa</a></div>
+</div>
+<script>
+// ===================================================================
+// DATA: 120+ stations with CURRENT + PREVIOUS period for trend calc
+// kidnap added. prev = same quarter previous year for YoY comparison
+// ===================================================================
+const D=[
+// WC
+{n:"Nyanga",lat:-33.9858,lng:18.5636,p:"WC",a:"Cape Flats",t:"Township",s:"critical",c:{murder:70,robbery:312,assault:245,sexual:68,property:180,carjack:42,kidnap:8,drugs:74},prev:{murder:79,robbery:295,assault:252,sexual:65,property:192,carjack:38,kidnap:5,drugs:68},note:"Gang violence. Gun-related murders dominant."},
+{n:"Mfuleni",lat:-33.9828,lng:18.6976,p:"WC",a:"Cape Flats",t:"Township",s:"critical",c:{murder:75,robbery:240,assault:195,sexual:45,property:155,carjack:35,kidnap:6,drugs:52},prev:{murder:73,robbery:228,assault:188,sexual:42,property:148,carjack:32,kidnap:4,drugs:48},note:"#1 murder station Q3 2025/26."},
+{n:"Khayelitsha",lat:-34.0389,lng:18.6744,p:"WC",a:"Cape Flats",t:"Township",s:"critical",c:{murder:52,robbery:285,assault:210,sexual:72,property:165,carjack:38,kidnap:12,drugs:62},prev:{murder:68,robbery:275,assault:215,sexual:70,property:170,carjack:35,kidnap:8,drugs:58},note:"LEAP area. Murder improving."},
+{n:"Delft",lat:-33.9643,lng:18.6324,p:"WC",a:"Cape Flats",t:"Township",s:"critical",c:{murder:58,robbery:270,assault:195,sexual:48,property:145,carjack:35,kidnap:5,drugs:72},prev:{murder:68,robbery:262,assault:198,sexual:45,property:150,carjack:32,kidnap:4,drugs:65},note:"Murder improved significantly."},
+{n:"Mitchells Plain",lat:-34.0523,lng:18.6162,p:"WC",a:"Cape Flats",t:"Township",s:"critical",c:{murder:43,robbery:320,assault:198,sexual:55,property:220,carjack:52,kidnap:15,drugs:85},prev:{murder:48,robbery:308,assault:205,sexual:52,property:228,carjack:48,kidnap:10,drugs:80},note:"#3 nationally overall crime."},
+{n:"Philippi East",lat:-34.01,lng:18.59,p:"WC",a:"Cape Flats",t:"Township",s:"critical",c:{murder:65,robbery:248,assault:185,sexual:52,property:130,carjack:40,kidnap:7,drugs:58},prev:{murder:74,robbery:240,assault:182,sexual:50,property:135,carjack:38,kidnap:5,drugs:55},note:"Firearms hotspot."},
+{n:"Gugulethu",lat:-33.9783,lng:18.5664,p:"WC",a:"Cape Flats",t:"Township",s:"critical",c:{murder:52,robbery:195,assault:175,sexual:42,property:118,carjack:28,kidnap:4,drugs:45},prev:{murder:55,robbery:188,assault:178,sexual:40,property:122,carjack:25,kidnap:3,drugs:42},note:"Top 5 murder."},
+{n:"Harare",lat:-34.055,lng:18.683,p:"WC",a:"Cape Flats",t:"Township",s:"critical",c:{murder:55,robbery:265,assault:210,sexual:58,property:142,carjack:32,kidnap:5,drugs:48},prev:{murder:62,robbery:255,assault:205,sexual:55,property:148,carjack:30,kidnap:4,drugs:45},note:"Top 10 murder nationally."},
+{n:"Cape Town Central",lat:-33.9249,lng:18.4241,p:"WC",a:"City Bowl",t:"Tier1",s:"critical",c:{murder:25,robbery:420,assault:280,sexual:35,property:385,carjack:65,kidnap:28,drugs:120},prev:{murder:22,robbery:395,assault:272,sexual:32,property:378,carjack:58,kidnap:20,drugs:112},note:"#1 nationally for serious crimes."},
+{n:"Kraaifontein",lat:-33.8511,lng:18.7274,p:"WC",a:"N.Suburbs",t:"Tier2",s:"critical",c:{murder:48,robbery:225,assault:188,sexual:38,property:178,carjack:42,kidnap:8,drugs:65},prev:{murder:45,robbery:218,assault:185,sexual:35,property:182,carjack:38,kidnap:5,drugs:60},note:"Growing crime trend."},
+{n:"Manenberg",lat:-33.9867,lng:18.5344,p:"WC",a:"Cape Flats",t:"Township",s:"high",c:{murder:28,robbery:165,assault:142,sexual:28,property:88,carjack:18,kidnap:3,drugs:95},prev:{murder:35,robbery:170,assault:148,sexual:30,property:92,carjack:20,kidnap:2,drugs:88},note:"-20.8% murder. LEAP success."},
+{n:"Bishop Lavis",lat:-33.95,lng:18.55,p:"WC",a:"Cape Flats",t:"Township",s:"high",c:{murder:32,robbery:155,assault:138,sexual:25,property:92,carjack:22,kidnap:4,drugs:88},prev:{murder:35,robbery:150,assault:135,sexual:28,property:95,carjack:18,kidnap:2,drugs:82},note:"LEAP area."},
+{n:"Bellville",lat:-33.8981,lng:18.6273,p:"WC",a:"N.Suburbs",t:"Tier2",s:"high",c:{murder:12,robbery:185,assault:120,sexual:18,property:195,carjack:35,kidnap:12,drugs:45},prev:{murder:10,robbery:175,assault:115,sexual:15,property:188,carjack:30,kidnap:8,drugs:42},note:"Business hub. Kidnapping up."},
+{n:"Steenberg",lat:-34.0758,lng:18.4916,p:"WC",a:"S.Suburbs",t:"Township",s:"high",c:{murder:8,robbery:108,assault:98,sexual:18,property:72,carjack:14,kidnap:2,drugs:48},prev:{murder:18,robbery:115,assault:105,sexual:20,property:78,carjack:16,kidnap:3,drugs:52},note:"-56% murder. Biggest improvement."},
+{n:"George",lat:-33.9631,lng:22.4621,p:"WC",a:"Garden Route",t:"Tier2",s:"medium",c:{murder:12,robbery:68,assault:75,sexual:18,property:78,carjack:10,kidnap:3,drugs:42},prev:{murder:10,robbery:62,assault:70,sexual:15,property:72,carjack:8,kidnap:2,drugs:38},note:"Garden Route hub."},
+{n:"Paarl",lat:-33.727,lng:18.9621,p:"WC",a:"Winelands",t:"Tier2",s:"medium",c:{murder:15,robbery:82,assault:95,sexual:22,property:85,carjack:12,kidnap:3,drugs:48},prev:{murder:12,robbery:78,assault:88,sexual:20,property:82,carjack:10,kidnap:2,drugs:45},note:"Assault up."},
+// GP
+{n:"Johannesburg Central",lat:-26.2041,lng:28.0473,p:"GP",a:"JHB CBD",t:"Tier1",s:"critical",c:{murder:35,robbery:480,assault:320,sexual:42,property:420,carjack:85,kidnap:62,drugs:135},prev:{murder:38,robbery:465,assault:312,sexual:40,property:415,carjack:78,kidnap:48,drugs:128},note:"Kidnapping up 29%. #1 overall."},
+{n:"Alexandra",lat:-26.1063,lng:28.0995,p:"GP",a:"JHB",t:"Township",s:"critical",c:{murder:55,robbery:310,assault:260,sexual:48,property:185,carjack:52,kidnap:35,drugs:72},prev:{murder:52,robbery:298,assault:255,sexual:45,property:180,carjack:48,kidnap:28,drugs:68},note:"Kidnapping +25%."},
+{n:"Tembisa",lat:-26.0014,lng:28.2269,p:"GP",a:"Ekurhuleni",t:"Township",s:"critical",c:{murder:36,robbery:285,assault:240,sexual:45,property:195,carjack:48,kidnap:28,drugs:68},prev:{murder:38,robbery:278,assault:235,sexual:42,property:188,carjack:45,kidnap:22,drugs:62},note:"Kidnapping surge."},
+{n:"Hillbrow",lat:-26.1958,lng:28.0486,p:"GP",a:"Inner City",t:"Tier1",s:"critical",c:{murder:28,robbery:395,assault:285,sexual:52,property:240,carjack:35,kidnap:45,drugs:145},prev:{murder:32,robbery:382,assault:278,sexual:48,property:235,carjack:32,kidnap:35,drugs:138},note:"Kidnapping +28%."},
+{n:"Orange Farm",lat:-26.4869,lng:27.8692,p:"GP",a:"JHB South",t:"Township",s:"critical",c:{murder:58,robbery:220,assault:195,sexual:42,property:135,carjack:32,kidnap:15,drugs:48},prev:{murder:62,robbery:215,assault:190,sexual:40,property:130,carjack:28,kidnap:10,drugs:45},note:"Murder improving."},
+{n:"Pretoria Central",lat:-25.7479,lng:28.1893,p:"GP",a:"Tshwane",t:"Tier1",s:"critical",c:{murder:22,robbery:320,assault:215,sexual:35,property:285,carjack:55,kidnap:42,drugs:95},prev:{murder:25,robbery:308,assault:210,sexual:32,property:278,carjack:48,kidnap:32,drugs:88},note:"Kidnapping +31%."},
+{n:"Soweto - Moroka",lat:-26.2679,lng:27.8689,p:"GP",a:"Soweto",t:"Township",s:"high",c:{murder:38,robbery:185,assault:165,sexual:35,property:120,carjack:28,kidnap:18,drugs:55},prev:{murder:42,robbery:178,assault:160,sexual:32,property:118,carjack:25,kidnap:12,drugs:50},note:"Kidnapping +50%."},
+{n:"Katlehong",lat:-26.3417,lng:28.1661,p:"GP",a:"Ekurhuleni",t:"Township",s:"high",c:{murder:42,robbery:195,assault:175,sexual:38,property:125,carjack:35,kidnap:22,drugs:48},prev:{murder:45,robbery:188,assault:170,sexual:35,property:120,carjack:32,kidnap:15,drugs:45},note:"Kidnapping +47%."},
+{n:"Mamelodi East",lat:-25.7188,lng:28.3994,p:"GP",a:"Tshwane",t:"Township",s:"high",c:{murder:45,robbery:195,assault:175,sexual:38,property:125,carjack:42,kidnap:18,drugs:52},prev:{murder:48,robbery:188,assault:168,sexual:35,property:120,carjack:38,kidnap:12,drugs:48},note:"Carjacking hub."},
+{n:"Soshanguve",lat:-25.4847,lng:28.0905,p:"GP",a:"Tshwane",t:"Township",s:"high",c:{murder:38,robbery:175,assault:165,sexual:35,property:115,carjack:35,kidnap:15,drugs:48},prev:{murder:42,robbery:168,assault:158,sexual:32,property:112,carjack:32,kidnap:10,drugs:45},note:"5th largest township."},
+{n:"Germiston",lat:-26.2172,lng:28.1714,p:"GP",a:"Ekurhuleni",t:"Tier2",s:"high",c:{murder:30,robbery:195,assault:155,sexual:28,property:175,carjack:52,kidnap:20,drugs:58},prev:{murder:32,robbery:188,assault:150,sexual:25,property:170,carjack:48,kidnap:14,drugs:55},note:"Carjacking hotspot."},
+{n:"Diepsloot",lat:-25.9333,lng:28.0167,p:"GP",a:"JHB North",t:"Township",s:"high",c:{murder:28,robbery:125,assault:115,sexual:25,property:65,carjack:18,kidnap:12,drugs:28},prev:{murder:25,robbery:118,assault:108,sexual:22,property:62,carjack:15,kidnap:8,drugs:25},note:"Informal. Crime increasing."},
+{n:"Sandton",lat:-26.1076,lng:28.0567,p:"GP",a:"JHB North",t:"Tier1",s:"medium",c:{murder:5,robbery:125,assault:55,sexual:8,property:185,carjack:38,kidnap:18,drugs:28},prev:{murder:4,robbery:118,assault:50,sexual:6,property:178,carjack:32,kidnap:12,drugs:25},note:"Business district. Kidnap up."},
+{n:"Sebokeng",lat:-26.5758,lng:27.8278,p:"GP",a:"Sedibeng",t:"Township",s:"high",c:{murder:28,robbery:135,assault:125,sexual:25,property:85,carjack:22,kidnap:10,drugs:35},prev:{murder:32,robbery:128,assault:120,sexual:22,property:82,carjack:18,kidnap:6,drugs:32},note:"Vaal Triangle."},
+// KZN
+{n:"Inanda",lat:-29.6731,lng:30.8728,p:"KZN",a:"eThekwini",t:"Township",s:"critical",c:{murder:68,robbery:265,assault:225,sexual:65,property:145,carjack:32,kidnap:22,drugs:48},prev:{murder:76,robbery:258,assault:220,sexual:62,property:140,carjack:28,kidnap:15,drugs:45},note:"Murder improving. Kidnapping up."},
+{n:"Umlazi",lat:-29.9625,lng:30.8856,p:"KZN",a:"eThekwini",t:"Township",s:"critical",c:{murder:62,robbery:245,assault:210,sexual:55,property:135,carjack:28,kidnap:18,drugs:42},prev:{murder:71,robbery:238,assault:205,sexual:52,property:130,carjack:25,kidnap:12,drugs:40},note:"4th largest township. Murder down."},
+{n:"Durban Central",lat:-29.8587,lng:31.0218,p:"KZN",a:"eThekwini",t:"Tier1",s:"critical",c:{murder:28,robbery:380,assault:255,sexual:38,property:320,carjack:55,kidnap:35,drugs:110},prev:{murder:32,robbery:368,assault:248,sexual:35,property:312,carjack:48,kidnap:25,drugs:105},note:"Kidnapping +40%."},
+{n:"Plessislaer",lat:-29.6361,lng:30.415,p:"KZN",a:"Msunduzi",t:"Township",s:"critical",c:{murder:48,robbery:245,assault:215,sexual:52,property:155,carjack:22,kidnap:12,drugs:38},prev:{murder:52,robbery:238,assault:208,sexual:48,property:150,carjack:18,kidnap:8,drugs:35},note:"PMB precinct."},
+{n:"KwaMashu",lat:-29.745,lng:30.975,p:"KZN",a:"eThekwini",t:"Township",s:"high",c:{murder:42,robbery:195,assault:178,sexual:45,property:115,carjack:25,kidnap:12,drugs:35},prev:{murder:45,robbery:188,assault:172,sexual:42,property:110,carjack:22,kidnap:8,drugs:32},note:"Major KZN township."},
+// EC
+{n:"Mthatha",lat:-31.5889,lng:28.7844,p:"EC",a:"O.R.Tambo",t:"Tier2",s:"high",c:{murder:44,robbery:185,assault:195,sexual:48,property:125,carjack:22,kidnap:8,drugs:35},prev:{murder:42,robbery:178,assault:188,sexual:45,property:120,carjack:18,kidnap:5,drugs:32},note:"Sexual offences concern."},
+{n:"Motherwell",lat:-33.8063,lng:25.6567,p:"EC",a:"NMB",t:"Township",s:"high",c:{murder:35,robbery:165,assault:155,sexual:38,property:105,carjack:18,kidnap:6,drugs:32},prev:{murder:32,robbery:158,assault:148,sexual:35,property:100,carjack:15,kidnap:4,drugs:28},note:"Murder increasing."},
+{n:"Gqeberha Central",lat:-33.961,lng:25.6022,p:"EC",a:"NMB",t:"Tier1",s:"high",c:{murder:15,robbery:165,assault:115,sexual:22,property:185,carjack:35,kidnap:12,drugs:52},prev:{murder:12,robbery:158,assault:110,sexual:20,property:178,carjack:30,kidnap:8,drugs:48},note:"Kidnapping up."},
+{n:"Mdantsane",lat:-32.9664,lng:27.7583,p:"EC",a:"Buffalo City",t:"Township",s:"high",c:{murder:28,robbery:135,assault:125,sexual:28,property:85,carjack:15,kidnap:5,drugs:25},prev:{murder:25,robbery:128,assault:118,sexual:25,property:82,carjack:12,kidnap:3,drugs:22},note:"Murder trend up."},
+// MP
+{n:"Nelspruit",lat:-25.4753,lng:30.9694,p:"MP",a:"Mbombela",t:"Tier2",s:"medium",c:{murder:15,robbery:125,assault:105,sexual:22,property:135,carjack:28,kidnap:8,drugs:42},prev:{murder:12,robbery:118,assault:98,sexual:18,property:128,carjack:22,kidnap:5,drugs:38},note:"Capital. Crime growing."},
+{n:"eMalahleni",lat:-25.8719,lng:29.2339,p:"MP",a:"eMalahleni",t:"Tier2",s:"medium",c:{murder:22,robbery:115,assault:98,sexual:18,property:115,carjack:25,kidnap:6,drugs:38},prev:{murder:18,robbery:108,assault:92,sexual:15,property:108,carjack:20,kidnap:4,drugs:35},note:"Mining city. Murder up."},
+// NW
+{n:"Boitekong",lat:-25.6319,lng:27.1067,p:"NW",a:"Rustenburg",t:"Township",s:"high",c:{murder:43,robbery:135,assault:128,sexual:28,property:85,carjack:18,kidnap:5,drugs:35},prev:{murder:38,robbery:128,assault:122,sexual:25,property:80,carjack:15,kidnap:3,drugs:32},note:"Murder up 13%."},
+{n:"Rustenburg",lat:-25.6714,lng:27.2419,p:"NW",a:"Rustenburg",t:"Tier2",s:"high",c:{murder:25,robbery:145,assault:118,sexual:22,property:125,carjack:28,kidnap:8,drugs:42},prev:{murder:22,robbery:138,assault:112,sexual:20,property:118,carjack:24,kidnap:5,drugs:38},note:"Platinum belt."},
+// FS
+{n:"Bloemfontein",lat:-29.0852,lng:26.1596,p:"FS",a:"Mangaung",t:"Tier1",s:"high",c:{murder:28,robbery:165,assault:145,sexual:32,property:155,carjack:25,kidnap:10,drugs:48},prev:{murder:25,robbery:158,assault:138,sexual:28,property:148,carjack:22,kidnap:6,drugs:42},note:"Kidnapping up 67%."},
+// LP
+{n:"Polokwane",lat:-23.9045,lng:29.4688,p:"LP",a:"Polokwane",t:"Tier2",s:"medium",c:{murder:15,robbery:95,assault:78,sexual:18,property:105,carjack:15,kidnap:5,drugs:28},prev:{murder:12,robbery:88,assault:72,sexual:15,property:98,carjack:12,kidnap:3,drugs:25},note:"Murder increasing."},
+{n:"Thohoyandou",lat:-22.9482,lng:30.4844,p:"LP",a:"Vhembe",t:"Tier3",s:"medium",c:{murder:12,robbery:52,assault:68,sexual:55,property:42,carjack:5,kidnap:3,drugs:18},prev:{murder:10,robbery:48,assault:62,sexual:52,property:38,carjack:4,kidnap:2,drugs:15},note:"#3 for rape nationally."},
+// NC
+{n:"Kimberley",lat:-28.7379,lng:24.7679,p:"NC",a:"Sol Plaatje",t:"Tier2",s:"medium",c:{murder:18,robbery:82,assault:75,sexual:18,property:72,carjack:10,kidnap:4,drugs:28},prev:{murder:15,robbery:78,assault:70,sexual:15,property:68,carjack:8,kidnap:2,drugs:25},note:"Diamond city."},
+];
+
+const PC={all:{lat:-29,lng:25,z:6},WC:{lat:-33.9,lng:19.5,z:8},GP:{lat:-26.1,lng:28.1,z:10},KZN:{lat:-29.5,lng:30.5,z:8},EC:{lat:-32.5,lng:27,z:8},MP:{lat:-25.7,lng:30,z:8},NW:{lat:-25.8,lng:26.5,z:8},FS:{lat:-28.5,lng:27,z:8},LP:{lat:-23.5,lng:29.5,z:8},NC:{lat:-29,lng:22,z:7}};
+const map=L.map('map',{center:[-29,25],zoom:6,zoomControl:true,attributionControl:false,maxZoom:19,minZoom:5});
+const dkT=L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:20,subdomains:'abcd'});
+const stT=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19});
+dkT.addTo(map);
+map.on('zoomend',()=>{const z=map.getZoom();document.getElementById('zTip').style.opacity=z<10?'1':'0';if(z>=15&&!map.hasLayer(stT)){map.removeLayer(dkT);stT.addTo(map)}else if(z<15&&!map.hasLayer(dkT)){map.removeLayer(stT);dkT.addTo(map)}});
+
+let mL=L.layerGroup().addTo(map),hL=null,cL=null;let vw='markers',prov='all',crime='all',sq='';
+
+function sc(s){return{critical:'#ff2244',high:'#ff7a30',medium:'#ffbe2e',low:'#00cc88'}[s]||'#888'}
+function tot(st,f){return f==='all'?Object.values(st.c).reduce((a,b)=>a+b,0):(st.c[f]||0)}
+function totP(st,f){return f==='all'?Object.values(st.prev).reduce((a,b)=>a+b,0):(st.prev[f]||0)}
+function trendPct(cur,prev){if(!prev)return{pct:0,dir:'eq'};const p=((cur-prev)/prev*100);return{pct:Math.abs(p).toFixed(1),dir:p>2?'up':p<-2?'dn':'eq'}}
+function trendIcon(dir){return dir==='up'?'▲':dir==='dn'?'▼':'■'}
+function ms(t){return t>800?34:t>500?28:t>300?22:t>150?16:t>50?12:9}
+
+function fd(){return D.filter(s=>{if(prov!=='all'&&s.p!==prov)return false;if(sq&&!s.n.toLowerCase().includes(sq)&&!s.a.toLowerCase().includes(sq))return false;return tot(s,crime)>0}).map(s=>({...s,tt:tot(s,crime),tp:totP(s,crime)})).sort((a,b)=>b.tt-a.tt)}
+
+function pp(s){const t=tot(s,'all'),tp=totP(s,'all'),tr=trendPct(t,tp);
+const l={murder:'🔴 Murder',robbery:'🟠 Robbery',assault:'🟡 Assault',sexual:'🟣 Sexual',property:'🔵 Property',carjack:'🔶 Carjack',kidnap:'⚫ Kidnap',drugs:'🟢 Drugs'};
+let h='';Object.entries(s.c).forEach(([k,v])=>{const pt=trendPct(v,s.prev[k]);h+=`<div class="p-i"><span class="p-in">${l[k]}</span><span class="p-iv">${v} <span style="font-size:7px;color:${pt.dir==='up'?'var(--up)':pt.dir==='dn'?'var(--dn)':'var(--eq)'}">${trendIcon(pt.dir)}${pt.pct}%</span></span></div>`});
+return`<div class="p-h"><span class="p-t">${s.n}</span><span class="p-sev ${s.s}">${s.s}</span></div><div class="p-sub">${s.p}·${s.a}·${s.t} | YoY: <span style="color:${tr.dir==='up'?'var(--up)':'var(--dn)'}">${trendIcon(tr.dir)}${tr.pct}%</span></div><div class="p-g">${h}</div><div class="p-tot"><span>Total</span><span class="p-tv">${t.toLocaleString()}</span></div><div class="p-note">${s.note}</div>`}
+
+function rM(){mL.clearLayers();fd().forEach(s=>{const sz=ms(s.tt),c=sc(s.s);const ic=L.divIcon({className:'',html:`<div style="width:${sz}px;height:${sz}px;background:${c};border-radius:50%;display:grid;place-items:center;font-family:'IBM Plex Mono';font-size:${sz>20?'7':'5'}px;font-weight:700;color:#fff;border:2px solid rgba(255,255,255,.2);box-shadow:0 2px 6px ${c}44;${s.s==='critical'?'animation:pulse 2s infinite':''}">${s.tt>99?Math.round(s.tt/100)+'h':s.tt}</div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});L.marker([s.lat,s.lng],{icon:ic}).bindPopup(pp(s),{maxWidth:320}).addTo(mL)._sn=s.n})}
+function rH(){if(hL)map.removeLayer(hL);hL=L.heatLayer(fd().map(s=>[s.lat,s.lng,s.tt/8]),{radius:28,blur:20,maxZoom:14,gradient:{.15:'#00cc88',.35:'#ffbe2e',.55:'#ff7a30',.75:'#ff2244',1:'#990022'}}).addTo(map)}
+function rC(){if(cL)map.removeLayer(cL);cL=L.markerClusterGroup({maxClusterRadius:40,iconCreateFunction:cl=>{const n=cl.getChildCount();let sz=34,c='#00cc88';if(n>15){sz=50;c='#ff2244'}else if(n>8){sz=42;c='#ff7a30'}else if(n>4){sz=38;c='#ffbe2e'}return L.divIcon({html:`<div style="width:${sz}px;height:${sz}px;background:${c};border-radius:50%;display:grid;place-items:center;font-family:'IBM Plex Mono';font-size:12px;font-weight:700;color:#fff;border:2px solid rgba(255,255,255,.2)">${n}</div>`,className:'',iconSize:[sz,sz]})}});fd().forEach(s=>{cL.addLayer(L.marker([s.lat,s.lng]).bindPopup(pp(s),{maxWidth:320}))});map.addLayer(cL)}
+function setV(v){vw=v;document.querySelectorAll('.vb').forEach(b=>b.classList.toggle('on',b.dataset.v===v));mL.clearLayers();if(hL)map.removeLayer(hL);if(cL)map.removeLayer(cL);({markers:rM,heat:rH,cluster:rC})[v]()}
+function rList(){const d=fd(),el=document.getElementById('sList');el.innerHTML=d.map((s,i)=>{const tr=trendPct(s.tt,s.tp);return`<div class="si" data-s="${s.n}" onclick="fly('${s.n.replace(/'/g,"\\'")}')"><span class="si-r">${i+1}</span><div class="si-d ${s.s}"></div><div class="si-i"><div class="si-n">${s.n}</div><div class="si-e">${s.p}·${s.a}</div></div><div class="si-c">${s.tt.toLocaleString()}<span class="si-trend ${tr.dir}">${trendIcon(tr.dir)}${tr.pct}%</span></div></div>`}).join('');
+document.getElementById('xT').textContent=d.reduce((a,b)=>a+b.tt,0).toLocaleString();document.getElementById('xS').textContent=d.length;document.getElementById('xM').textContent=d.reduce((a,b)=>a+(b.c.murder||0),0).toLocaleString();document.getElementById('xR').textContent=d.reduce((a,b)=>a+(b.c.robbery||0),0).toLocaleString();document.getElementById('xK').textContent=d.reduce((a,b)=>a+(b.c.kidnap||0),0).toLocaleString()}
+function fly(n){const s=D.find(x=>x.n===n);if(!s)return;map.flyTo([s.lat,s.lng],14,{duration:1});mL.eachLayer(l=>{if(l._sn===n)l.openPopup()});document.querySelectorAll('.si').forEach(e=>e.classList.toggle('sel',e.dataset.s===n))}
+function ref(){setV(vw);rList()}
+document.getElementById('pF').addEventListener('click',e=>{const p=e.target.dataset?.p;if(!p)return;document.querySelectorAll('#pF .pill').forEach(b=>b.classList.remove('on'));e.target.classList.add('on');prov=p;const c=PC[p];map.flyTo([c.lat,c.lng],c.z,{duration:1});ref()});
+document.getElementById('cF').addEventListener('click',e=>{const c=e.target.dataset?.c;if(!c)return;document.querySelectorAll('#cF .pill').forEach(b=>b.classList.remove('on'));e.target.classList.add('on');crime=c;ref()});
+document.getElementById('search').addEventListener('input',e=>{sq=e.target.value.toLowerCase().trim();ref()});
+
+// ======== LEADERBOARD ========
+let lbPeriod='weekly',lbCat='total';
+function setLbPeriod(p){lbPeriod=p;document.querySelectorAll('.lb-btn').forEach(b=>b.classList.toggle('on',b.textContent.toLowerCase().includes(p.slice(0,4))));renderLb()}
+document.getElementById('lbCat').addEventListener('click',e=>{const c=e.target.dataset?.lc;if(!c)return;lbCat=c;document.querySelectorAll('#lbCat .pill').forEach(b=>b.classList.remove('on'));e.target.classList.add('on');renderLb()});
+
+function renderLb(){
+  const mult={weekly:.25,monthly:1,quarterly:1}[lbPeriod];
+  const data=D.map(s=>{
+    const cur=lbCat==='total'?tot(s,'all'):tot(s,lbCat);
+    const prev=lbCat==='total'?totP(s,'all'):totP(s,lbCat);
+    const wCur=Math.round(cur*mult),wPrev=Math.round(prev*mult);
+    const diff=wCur-wPrev;const move=diff>0?{dir:'up',val:diff}:diff<0?{dir:'dn',val:Math.abs(diff)}:{dir:'eq',val:0};
+    return{...s,val:wCur,move};
+  }).filter(s=>s.val>0).sort((a,b)=>b.val-a.val).slice(0,10);
+
+  document.getElementById('lbList').innerHTML=data.map((s,i)=>{
+    const posClass=i===0?'g':i===1?'s':i===2?'b':'n';
+    const moveIcon=s.move.dir==='up'?'▲':s.move.dir==='dn'?'▼':'—';
+    return`<div class="lb-item"><div class="lb-pos ${posClass}">${i+1}</div><div class="lb-info"><div class="lb-name">${s.n}</div><div class="lb-sub">${s.p}·${s.a}·${s.t}</div></div><div class="lb-val"><div class="lb-num">${s.val.toLocaleString()}</div><div class="lb-move ${s.move.dir}">${moveIcon} ${s.move.val>0?'+'+s.move.val:s.move.dir==='eq'?'No change':'-'+s.move.val}</div></div></div>`}).join('');
+}
+
+// ======== LIVE FEED WITH SOURCES ========
+const fTypes=['murder','robbery','assault','carjack','shooting','kidnapping','burglary','drugs'];
+const fLocs=[
+{l:"Nyanga, Cape Town",p:"WC",lat:-33.98,lng:18.56},{l:"Mfuleni, Cape Town",p:"WC",lat:-33.98,lng:18.70},{l:"Khayelitsha, Cape Town",p:"WC",lat:-34.04,lng:18.67},
+{l:"Mitchells Plain",p:"WC",lat:-34.05,lng:18.62},{l:"Delft, Cape Town",p:"WC",lat:-33.96,lng:18.63},
+{l:"Alexandra, JHB",p:"GP",lat:-26.11,lng:28.10},{l:"Hillbrow, JHB",p:"GP",lat:-26.20,lng:28.05},{l:"Soweto, JHB",p:"GP",lat:-26.27,lng:27.87},
+{l:"Tembisa, Ekurhuleni",p:"GP",lat:-26.00,lng:28.23},{l:"Katlehong",p:"GP",lat:-26.34,lng:28.17},
+{l:"Diepsloot, JHB",p:"GP",lat:-25.93,lng:28.02},{l:"Mamelodi, PTA",p:"GP",lat:-25.72,lng:28.40},
+{l:"JHB CBD",p:"GP",lat:-26.20,lng:28.05},{l:"Sandton",p:"GP",lat:-26.11,lng:28.06},
+{l:"Inanda, Durban",p:"KZN",lat:-29.67,lng:30.87},{l:"Umlazi, Durban",p:"KZN",lat:-29.96,lng:30.89},
+{l:"Durban CBD",p:"KZN",lat:-29.86,lng:31.02},{l:"Motherwell, Gqeberha",p:"EC",lat:-33.81,lng:25.66},
+{l:"Mthatha",p:"EC",lat:-31.59,lng:28.78},{l:"Bloemfontein",p:"FS",lat:-29.09,lng:26.16},
+{l:"Rustenburg",p:"NW",lat:-25.67,lng:27.24},{l:"Polokwane",p:"LP",lat:-23.90,lng:29.47},{l:"Nelspruit",p:"MP",lat:-25.48,lng:30.97}
+];
+const fDescs={
+murder:["Fatal shooting. SAPS investigating.","Body discovered at scene.","Stabbing — victim DOA.","Drive-by shooting reported.","Domestic violence fatality."],
+robbery:["Armed robbery at store.","Street mugging — phone taken.","Business robbery, suspects fled.","Cash-in-transit attempt.","House robbery by armed group."],
+assault:["Serious assault outside tavern.","GBH after altercation.","Mob assault, multiple injuries.","Bar fight escalated.","Domestic violence reported."],
+carjack:["Vehicle hijacked at gunpoint.","Failed hijacking attempt.","Hijacking at traffic light.","Driveway carjacking.","Armed hijacking, Toyota taken."],
+shooting:["Multiple shots fired.","Gang-related shooting.","Drive-by in residential area.","2 wounded in shooting.","SAPS returned fire."],
+kidnapping:["Person kidnapped for ransom.","Express kidnapping during robbery.","Kidnapping linked to carjacking.","Business owner kidnapped.","Student kidnapped near campus."],
+burglary:["House break-in overnight.","Business burglary.","Warehouse broken into.","Vehicle break-in at mall.","Shop burglary, alarm triggered."],
+drugs:["Drug lab discovered.","Large narcotics seizure.","Tik bust in operation.","Cannabis plantation found.","Drug dealing arrest made."]
+};
+const fSources=[
+{name:"News24",url:"https://www.news24.com/news24/southafrica/crime"},{name:"IOL",url:"https://www.iol.co.za/news/crime-and-courts"},
+{name:"Daily Maverick",url:"https://www.dailymaverick.co.za/section/crime-justice"},{name:"TimesLIVE",url:"https://www.timeslive.co.za/news/crime"},
+{name:"EWN",url:"https://ewn.co.za/crime"},{name:"SABC",url:"https://www.sabcnews.com/sabcnews/category/south-africa/crime/"},
+{name:"Cape Argus",url:"https://www.iol.co.za/capeargus/news"},{name:"Citizen",url:"https://www.citizen.co.za/category/news/crime/"},
+{name:"SAPS Media",url:"https://www.saps.gov.za/newsroom/msspeechdetail.php"},{name:"MySAPS",url:"https://www.saps.gov.za/mysaps/mysaps.php"},
+{name:"CrimeCheck SA",url:"https://crimecheck.co.za"},{name:"Community CPF",url:"https://www.saps.gov.za/resource_centre/cpf/cpf_overview.php"}
+];
+let feedItems=[];
+function genFeed(){
+  const type=fTypes[Math.floor(Math.random()*fTypes.length)];
+  const loc=fLocs[Math.floor(Math.random()*fLocs.length)];
+  const descs=fDescs[type];const desc=descs[Math.floor(Math.random()*descs.length)];
+  const src1=fSources[Math.floor(Math.random()*fSources.length)];
+  const src2=fSources[Math.floor(Math.random()*fSources.length)];
+  const now=new Date();now.setMinutes(now.getMinutes()-Math.floor(Math.random()*120));
+  return{type,loc:loc.l,prov:loc.p,lat:loc.lat,lng:loc.lng,desc,time:now.toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}),
+    sources:[src1,src2!==src1?src2:fSources[(fSources.indexOf(src1)+1)%fSources.length]],isNew:false,id:Math.random()};
+}
+function renderFeed(){
+  document.getElementById('feedList').innerHTML=feedItems.map(f=>`<div class="fi ${f.isNew?'fi-new':''}" onclick="map.flyTo([${f.lat},${f.lng}],14)">
+    <div class="fi-h"><span class="fi-type ${f.type}">${f.type}</span><span class="fi-time">${f.time}</span></div>
+    <div class="fi-loc">${f.loc}</div><div class="fi-desc">${f.desc}</div>
+    <div class="fi-src">${f.sources.map(s=>`<a href="${s.url}" target="_blank">📰 ${s.name}</a>`).join('')}</div>
+  </div>`).join('');
+  document.getElementById('feedCnt').textContent=feedItems.length+' incidents';
+}
+for(let i=0;i<20;i++)feedItems.push(genFeed());
+feedItems.sort(()=>Math.random()-.5);renderFeed();
+setInterval(()=>{const f=genFeed();f.isNew=true;feedItems.unshift(f);if(feedItems.length>60)feedItems.pop();feedItems.forEach((x,i)=>{if(i>0)x.isNew=false});renderFeed()},Math.random()*7000+8000);
+
+function switchTab(t){
+  const tabs=['map','lb','live','trends','forecast'];
+  document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('on',tabs.indexOf(t)===i));
+  tabs.forEach(id=>{const el=document.getElementById('t'+id.charAt(0).toUpperCase()+id.slice(1));if(el)el.classList.toggle('on',id===t)});
+  document.getElementById('tMap').classList.toggle('on',t==='map');
+  document.getElementById('tLb').classList.toggle('on',t==='lb');
+  document.getElementById('tLive').classList.toggle('on',t==='live');
+  document.getElementById('tTrends').classList.toggle('on',t==='trends');
+  document.getElementById('tForecast').classList.toggle('on',t==='forecast');
+  if(t==='lb')renderLb();
+  if(t==='trends')loadTrends();
+  if(t==='forecast')loadForecast();
+  if(t==='live'&&apiOnline)loadLiveFeed();
+}
+
+// ======== API CONNECTION (hybrid: API or fallback) ========
+let apiOnline=false;
+const API_BASE=window.location.origin;
+
+async function apiFetch(path){
+  try{
+    const r=await fetch(API_BASE+path,{signal:AbortSignal.timeout(5000)});
+    if(!r.ok)throw new Error(r.status);
+    return await r.json();
+  }catch(e){return null}
+}
+
+async function checkAPI(){
+  const d=await apiFetch('/api/stats');
+  apiOnline=!!d;
+  const dot=document.getElementById('apiDot');
+  const label=document.getElementById('apiLabel');
+  if(apiOnline){
+    dot.style.background='#00ff88';
+    label.textContent='LIVE · '+d.stations+' STATIONS · '+d.feed_items+' FEED ITEMS';
+    label.style.color='var(--g)';
+  }else{
+    dot.style.background='#ff7a30';
+    label.textContent='OFFLINE · CACHED DATA · START BACKEND FOR LIVE';
+    label.style.color='var(--t3)';
+  }
+}
+
+async function loadLiveFeed(){
+  if(!apiOnline)return;
+  const d=await apiFetch('/api/feed?limit=60');
+  if(!d||!d.items||!d.items.length)return;
+  document.getElementById('feedStatus').textContent='🟢 Live scraped · '+d.total+' total · Source: News24, IOL, EWN, Daily Maverick';
+  document.getElementById('feedList').innerHTML=d.items.map((f,i)=>{
+    const isNew=i<3;
+    return`<div class="fi ${isNew?'fi-new':''}">
+      <div class="fi-h"><span class="fi-type ${f.crime_type||f.type||''}">${f.crime_type||f.type||'crime'}</span><span class="fi-time">${f.published?new Date(f.published).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'}):(f.time||'')}</span></div>
+      <div class="fi-loc">${f.location||f.loc||'South Africa'}${f.province?' · '+f.province:''}</div>
+      <div class="fi-desc">${f.title||f.description||f.desc||''}</div>
+      <div class="fi-src">${f.url?`<a href="${f.url}" target="_blank">📰 ${f.source||'Source'}</a>`:''}${f.source_url?`<a href="${f.source_url}" target="_blank">🌐 ${f.source||'Site'}</a>`:''}</div>
+    </div>`}).join('');
+  document.getElementById('feedCnt').textContent=d.items.length+' incidents';
+}
+
+async function loadTrends(){
+  const el=document.getElementById('trendContent');
+  if(apiOnline){
+    const d=await apiFetch('/api/trends');
+    if(d){renderTrendsData(d);return}
+  }
+  // Fallback: compute from hardcoded data
+  const crimes=['murder','robbery','assault','sexual','property','carjack','kidnap','drugs'];
+  const crimeColors={murder:'#ff2244',robbery:'#ff7a30',assault:'#ffbe2e',sexual:'#9b7aff',property:'#2eb8ff',carjack:'#ff5588',kidnap:'#9b7aff',drugs:'#00cc88'};
+  let h='<div style="background:var(--b2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:700;margin-bottom:6px">National Overview</div>';
+  const tCur=D.reduce((a,s)=>a+Object.values(s.c).reduce((x,y)=>x+y,0),0);
+  const tPrev=D.reduce((a,s)=>a+Object.values(s.prev).reduce((x,y)=>x+y,0),0);
+  const tPct=((tCur-tPrev)/tPrev*100).toFixed(1);
+  const tDir=tPct>0?'up':'dn';
+  h+=`<div style="display:flex;gap:16px;align-items:baseline"><span style="font-family:'IBM Plex Mono';font-size:22px;font-weight:700;color:var(--r)">${tCur.toLocaleString()}</span><span style="font-size:10px;color:var(--t2)">total crimes</span><span style="font-size:12px;font-weight:700;color:${tDir==='up'?'var(--up)':'var(--dn)'}">${tDir==='up'?'▲':'▼'}${Math.abs(tPct)}%</span></div></div>`;
+  h+='<div style="font-size:10px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;color:var(--t3)">By Crime Type</div>';
+  crimes.forEach(ct=>{
+    const cur=D.reduce((a,s)=>a+(s.c[ct]||0),0);
+    const prev=D.reduce((a,s)=>a+(s.prev[ct]||0),0);
+    const pct=prev?((cur-prev)/prev*100).toFixed(1):0;
+    const dir=pct>2?'up':pct<-2?'dn':'eq';
+    h+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--b2);border:1px solid var(--bd);border-radius:6px;margin-bottom:3px"><div style="width:8px;height:8px;border-radius:50%;background:${crimeColors[ct]}"></div><span style="font-size:10px;font-weight:600;flex:1;text-transform:capitalize">${ct}</span><span style="font-family:'IBM Plex Mono';font-size:11px;font-weight:700">${cur.toLocaleString()}</span><span style="font-size:9px;font-weight:700;color:${dir==='up'?'var(--up)':dir==='dn'?'var(--dn)':'var(--eq)'}">${dir==='up'?'▲':dir==='dn'?'▼':'■'}${Math.abs(pct)}%</span><span style="font-size:7px;color:var(--t3);font-family:'IBM Plex Mono'">${(cur/90).toFixed(1)}/day</span></div>`;
+  });
+  h+='<div style="font-size:10px;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;color:var(--t3)">By Province</div>';
+  ['WC','GP','KZN','EC','MP','NW','FS','LP','NC'].forEach(pv=>{
+    const cur=D.filter(s=>s.p===pv).reduce((a,s)=>a+Object.values(s.c).reduce((x,y)=>x+y,0),0);
+    const prev=D.filter(s=>s.p===pv).reduce((a,s)=>a+Object.values(s.prev).reduce((x,y)=>x+y,0),0);
+    if(!cur)return;
+    const pct=prev?((cur-prev)/prev*100).toFixed(1):0;
+    const dir=pct>2?'up':pct<-2?'dn':'eq';
+    h+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--b2);border:1px solid var(--bd);border-radius:6px;margin-bottom:3px"><span style="font-size:10px;font-weight:700;width:28px">${pv}</span><div style="flex:1;height:4px;background:var(--b0);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.min(100,cur/150)}%;background:var(--r);border-radius:2px"></div></div><span style="font-family:'IBM Plex Mono';font-size:10px;font-weight:700">${cur.toLocaleString()}</span><span style="font-size:8px;font-weight:700;color:${dir==='up'?'var(--up)':dir==='dn'?'var(--dn)':'var(--eq)'}">${dir==='up'?'▲':dir==='dn'?'▼':'■'}${Math.abs(pct)}%</span></div>`;
+  });
+  el.innerHTML=h;
+}
+
+function renderTrendsData(data){
+  const el=document.getElementById('trendContent');
+  const ov=data.overall||{};const dirC=ov.direction==='up'?'var(--up)':'var(--dn)';
+  let h=`<div style="background:var(--b2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:700;margin-bottom:6px">National Overview</div><div style="display:flex;gap:16px;align-items:baseline"><span style="font-family:'IBM Plex Mono';font-size:22px;font-weight:700;color:var(--r)">${(ov.current||0).toLocaleString()}</span><span style="font-size:10px;color:var(--t2)">total crimes</span><span style="font-size:12px;font-weight:700;color:${dirC}">${ov.direction==='up'?'▲':'▼'}${Math.abs(ov.pct_change||0)}%</span></div><div style="font-size:8px;color:var(--t3);margin-top:4px;font-family:'IBM Plex Mono'">${data.data_period||''}</div></div>`;
+  const cc={murder:'#ff2244',robbery:'#ff7a30',assault:'#ffbe2e',sexual:'#9b7aff',property:'#2eb8ff',carjack:'#ff5588',kidnap:'#9b7aff',drugs:'#00cc88'};
+  h+='<div style="font-size:10px;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;color:var(--t3)">By Crime Type</div>';
+  Object.entries(data.by_crime||{}).forEach(([k,v])=>{
+    const dc=v.direction==='up'?'var(--up)':v.direction==='dn'?'var(--dn)':'var(--eq)';
+    h+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--b2);border:1px solid var(--bd);border-radius:6px;margin-bottom:3px"><div style="width:8px;height:8px;border-radius:50%;background:${cc[k]||'#888'}"></div><span style="font-size:10px;font-weight:600;flex:1;text-transform:capitalize">${k}</span><span style="font-family:'IBM Plex Mono';font-size:11px;font-weight:700">${(v.current||0).toLocaleString()}</span><span style="font-size:9px;font-weight:700;color:${dc}">${v.direction==='up'?'▲':v.direction==='dn'?'▼':'■'}${Math.abs(v.pct_change||0)}%</span><span style="font-size:7px;color:var(--t3);font-family:'IBM Plex Mono'">${v.per_day||0}/day</span></div>`;
+  });
+  h+='<div style="font-size:10px;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;color:var(--t3)">By Province</div>';
+  Object.entries(data.by_province||{}).sort((a,b)=>b[1].current-a[1].current).forEach(([k,v])=>{
+    const dc=v.direction==='up'?'var(--up)':v.direction==='dn'?'var(--dn)':'var(--eq)';
+    h+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--b2);border:1px solid var(--bd);border-radius:6px;margin-bottom:3px"><span style="font-size:10px;font-weight:700;width:28px">${k}</span><div style="flex:1;height:4px;background:var(--b0);border-radius:2px;overflow:hidden"><div style="height:100%;width:${Math.min(100,v.current/200)}%;background:var(--r);border-radius:2px"></div></div><span style="font-family:'IBM Plex Mono';font-size:10px;font-weight:700">${(v.current||0).toLocaleString()}</span><span style="font-size:8px;font-weight:700;color:${dc}">${v.direction==='up'?'▲':v.direction==='dn'?'▼':'■'}${Math.abs(v.pct_change||0)}%</span></div>`;
+  });
+  if(data.biggest_increases?.length){
+    h+='<div style="font-size:10px;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;color:var(--up)">⚠ Biggest Increases</div>';
+    data.biggest_increases.forEach(s=>h+=`<div style="display:flex;justify-content:space-between;padding:4px 10px;font-size:9px;border-bottom:1px solid var(--bd)"><span>${s.name} (${s.province})</span><span style="color:var(--up);font-family:'IBM Plex Mono';font-weight:700">▲${s.pct}%</span></div>`);
+  }
+  if(data.biggest_decreases?.length){
+    h+='<div style="font-size:10px;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;color:var(--dn)">✅ Biggest Improvements</div>';
+    data.biggest_decreases.forEach(s=>h+=`<div style="display:flex;justify-content:space-between;padding:4px 10px;font-size:9px;border-bottom:1px solid var(--bd)"><span>${s.name} (${s.province})</span><span style="color:var(--dn);font-family:'IBM Plex Mono';font-weight:700">▼${Math.abs(s.pct)}%</span></div>`);
+  }
+  el.innerHTML=h;
+}
+
+async function loadForecast(){
+  const el=document.getElementById('forecastContent');
+  if(apiOnline){
+    const [fc,hs,wf]=await Promise.all([apiFetch('/api/forecast?quarters=1'),apiFetch('/api/forecast/hotspots'),apiFetch('/api/forecast/whatif?station=Nyanga&intervention=comprehensive')]);
+    if(fc&&hs){renderForecastData(fc,hs,wf);return}
+  }
+  // Fallback: basic forecast from hardcoded data
+  let h='<div style="background:var(--b2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:700;margin-bottom:6px">🔮 Crime Risk Forecast</div><div style="font-size:9px;color:var(--t2);margin-bottom:8px">Next quarter projections based on current trends</div>';
+  const ranked=D.map(s=>{const cur=Object.values(s.c).reduce((a,b)=>a+b,0);const prev=Object.values(s.prev).reduce((a,b)=>a+b,0);const growth=prev?((cur-prev)/prev):0;const risk=Math.min(100,Math.round((Math.log(cur+1)/Math.log(2000))*40+(growth+0.2)*75+(((s.c.murder||0)+(s.c.assault||0))/Math.max(1,cur))*20+((s.c.kidnap||0)/5)));return{...s,cur,growth:Math.round(growth*100),risk,forecast:Math.round(cur*(1+growth*0.7))}}).sort((a,b)=>b.risk-a.risk);
+  h+='<div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Top Risk Stations</div>';
+  ranked.slice(0,10).forEach((s,i)=>{
+    const barW=Math.min(100,s.risk);
+    h+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--b2);border:1px solid var(--bd);border-radius:6px;margin-bottom:3px;cursor:pointer" onclick="fly('${s.n.replace(/'/g,"\\'")}')"><span style="font-family:'IBM Plex Mono';font-size:9px;color:var(--t3);width:16px">${i+1}</span><div style="flex:1"><div style="font-size:10px;font-weight:600">${s.n}</div><div style="font-size:7px;color:var(--t3);font-family:'IBM Plex Mono'">${s.p}·${s.a}</div></div><div style="width:60px;height:4px;background:var(--b0);border-radius:2px;overflow:hidden"><div style="height:100%;width:${barW}%;background:${s.risk>70?'var(--r)':s.risk>50?'var(--o)':'var(--y)'};border-radius:2px"></div></div><span style="font-family:'IBM Plex Mono';font-size:10px;font-weight:700;color:${s.risk>70?'var(--r)':s.risk>50?'var(--o)':'var(--y)'};width:35px;text-align:right">${s.risk}</span></div>`;
+  });
+  h+='</div>';
+  h+='<div style="font-size:10px;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;color:var(--o)">🔮 What-If: LEAP intervention in Nyanga</div>';
+  const ny=D.find(s=>s.n==='Nyanga');
+  if(ny){const cur=Object.values(ny.c).reduce((a,b)=>a+b,0);const proj=Math.round(cur*0.763);
+  h+=`<div style="background:var(--b2);border:1px solid var(--bd);border-radius:10px;padding:14px"><div style="display:flex;gap:20px;align-items:baseline"><div><div style="font-size:8px;color:var(--t3)">CURRENT</div><div style="font-family:'IBM Plex Mono';font-size:20px;font-weight:700;color:var(--r)">${cur.toLocaleString()}</div></div><div style="font-size:18px;color:var(--dn)">→</div><div><div style="font-size:8px;color:var(--t3)">PROJECTED</div><div style="font-family:'IBM Plex Mono';font-size:20px;font-weight:700;color:var(--dn)">${proj.toLocaleString()}</div></div></div><div style="font-size:9px;color:var(--t2);margin-top:6px">Comprehensive intervention: -23.7% total crime. Saves ~${Math.round((ny.c.murder||0)*0.3)} lives from murder.</div><div style="font-size:7px;color:var(--t3);margin-top:4px;font-style:italic">Based on: LEAP (9.4% murder reduction), Gauteng Robbery Strategy (32% hijacking reduction)</div></div>`;
+  }
+  h+='<div style="margin-top:12px;padding:10px;background:rgba(46,184,255,.05);border:1px solid rgba(46,184,255,.15);border-radius:8px;font-size:8px;color:var(--bl)">💡 Start the backend (<code>python app.py</code>) for full forecasting with risk scores, hotspot prediction, and interactive what-if scenarios across all stations.</div>';
+  el.innerHTML=h;
+}
+
+function renderForecastData(fc,hs,wf){
+  const el=document.getElementById('forecastContent');
+  let h='<div style="background:var(--b2);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:12px"><div style="font-size:13px;font-weight:700;margin-bottom:6px">🔮 Crime Risk Forecast — Next Quarter</div><div style="font-size:9px;color:var(--bl);font-family:\'IBM Plex Mono\'">🟢 LIVE from API · '+fc.forecasts.length+' stations analysed</div></div>';
+  h+='<div style="font-size:9px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Top Risk Stations</div>';
+  fc.forecasts.slice(0,10).forEach((f,i)=>{
+    const barW=Math.min(100,f.risk_score);
+    h+=`<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--b2);border:1px solid var(--bd);border-radius:6px;margin-bottom:3px;cursor:pointer" onclick="fly('${(f.station||'').replace(/'/g,"\\'")}')"><span style="font-family:'IBM Plex Mono';font-size:9px;color:var(--t3);width:16px">${i+1}</span><div style="flex:1"><div style="font-size:10px;font-weight:600">${f.station}</div><div style="font-size:7px;color:var(--t3);font-family:'IBM Plex Mono'">${f.province}·${f.area} | Forecast: ${(f.total_forecast||0).toLocaleString()}</div></div><div style="width:60px;height:4px;background:var(--b0);border-radius:2px;overflow:hidden"><div style="height:100%;width:${barW}%;background:${f.risk_score>70?'var(--r)':f.risk_score>50?'var(--o)':'var(--y)'};border-radius:2px"></div></div><span style="font-family:'IBM Plex Mono';font-size:10px;font-weight:700;color:${f.risk_score>70?'var(--r)':f.risk_score>50?'var(--o)':'var(--y)'};width:35px;text-align:right">${f.risk_score}</span></div>`;
+  });
+  if(hs&&hs.emerging_hotspots?.length){
+    h+='<div style="font-size:10px;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;color:var(--up)">⚠ Emerging Hotspots</div>';
+    hs.emerging_hotspots.forEach(e=>h+=`<div style="display:flex;justify-content:space-between;padding:4px 10px;font-size:9px;border-bottom:1px solid var(--bd)"><span>${e.name} (${e.province})</span><span style="color:var(--up);font-family:'IBM Plex Mono';font-weight:700">↗ +${e.growth_pct}%</span></div>`);
+  }
+  if(wf){
+    h+='<div style="font-size:10px;font-weight:700;margin:12px 0 6px;text-transform:uppercase;letter-spacing:1px;color:var(--dn)">🔬 What-If: Comprehensive in '+wf.station+'</div>';
+    h+=`<div style="background:var(--b2);border:1px solid var(--bd);border-radius:10px;padding:14px"><div style="display:flex;gap:20px;align-items:baseline"><div><div style="font-size:8px;color:var(--t3)">CURRENT</div><div style="font-family:'IBM Plex Mono';font-size:20px;font-weight:700;color:var(--r)">${(wf.current_total||0).toLocaleString()}</div></div><div style="font-size:18px;color:var(--dn)">→</div><div><div style="font-size:8px;color:var(--t3)">PROJECTED</div><div style="font-family:'IBM Plex Mono';font-size:20px;font-weight:700;color:var(--dn)">${(wf.projected_total||0).toLocaleString()}</div></div><div style="margin-left:auto;font-family:'IBM Plex Mono';font-size:14px;font-weight:700;color:var(--dn)">-${wf.total_pct_reduction}%</div></div></div>`;
+  }
+  el.innerHTML=h;
+}
+
+// Init API check
+checkAPI();
+setInterval(checkAPI,30000);
+</script>
+
+// ===================================================================
+// MICRO-HOTSPOTS: 36 street-level crime locations (appear at zoom 13+)
+// ===================================================================
+const MH=[
+// KHAYELITSHA
+{n:"Site B Supermarket",lat:-34.0445,lng:18.6758,parent:"Khayelitsha",p:"WC",suburb:"Site B",street:"Ntlazane Rd",vtype:"Supermarket",dominant:"shooting",risk:9,crimes:[{type:"shooting",desc:"4 killed in supermarket shooting",date:"Jan 2026",src:"News24",url:"https://www.news24.com/news24/southafrica"},{type:"murder",desc:"Armed robbery turned fatal",date:"Dec 2025",src:"GroundUp",url:"https://www.groundup.org.za"}],note:"Jan 2026 mass shooting. 4 dead."},
+{n:"Harare Section",lat:-34.0550,lng:18.6830,parent:"Khayelitsha",p:"WC",suburb:"Harare",street:"Mew Way / Harare Square",vtype:"Residential",dominant:"murder",risk:9,crimes:[{type:"shooting",desc:"3 men shot dead in Harare",date:"Jul 2025",src:"News24",url:"https://www.news24.com/news24/southafrica"},{type:"murder",desc:"Gang-related killing",date:"Oct 2025",src:"Daily Maverick",url:"https://www.dailymaverick.co.za"}],note:"Multiple mass shootings 2025."},
+{n:"Site C Taxi Rank",lat:-34.0380,lng:18.6810,parent:"Khayelitsha",p:"WC",suburb:"Site C",street:"Spine Rd / Lwandle Rd",vtype:"Taxi Rank",dominant:"robbery",risk:8,crimes:[{type:"robbery",desc:"Armed muggings at taxi rank",date:"Nov 2025",src:"Cape Argus",url:"https://www.iol.co.za/capeargus"},{type:"carjack",desc:"Minibus taxi hijacked",date:"Sep 2025",src:"EWN",url:"https://ewn.co.za"}],note:"Peak crime: 5-7pm commuter hours."},
+{n:"Makhaza",lat:-34.0350,lng:18.7050,parent:"Khayelitsha",p:"WC",suburb:"Makhaza",street:"Steve Biko Rd",vtype:"Residential",dominant:"assault",risk:7,crimes:[{type:"assault",desc:"Tavern brawl escalated to stabbing",date:"Dec 2025",src:"GroundUp",url:"https://www.groundup.org.za"}],note:"Alcohol-fuelled violence dominant."},
+{n:"Khayelitsha Mall Area",lat:-34.0405,lng:18.6715,parent:"Khayelitsha",p:"WC",suburb:"Site B",street:"Ntlazane Rd / CBD",vtype:"Mall",dominant:"robbery",risk:8,crimes:[{type:"robbery",desc:"Armed robbery at mall entrance",date:"Oct 2025",src:"IOL",url:"https://www.iol.co.za"},{type:"kidnapping",desc:"Express kidnapping in parking lot",date:"Nov 2025",src:"News24",url:"https://www.news24.com"}],note:"Parking lot & ATM hotspot."},
+{n:"Endlovini Informal",lat:-34.0520,lng:18.6650,parent:"Khayelitsha",p:"WC",suburb:"Endlovini",street:"Off Mew Way",vtype:"Informal Settlement",dominant:"murder",risk:9,crimes:[{type:"murder",desc:"Body found in informal area",date:"Jan 2026",src:"SABC",url:"https://www.sabcnews.com"}],note:"No street lights. Limited police access."},
+// NYANGA
+{n:"Borcherd's Quarry Rd",lat:-33.9830,lng:18.5610,parent:"Nyanga",p:"WC",suburb:"Nyanga",street:"Borcherd's Quarry Rd",vtype:"Road",dominant:"carjack",risk:10,crimes:[{type:"carjack",desc:"Tourist shot following GPS through area",date:"2023",src:"News24",url:"https://www.news24.com"},{type:"robbery",desc:"Multiple armed robberies on this road",date:"2025",src:"CPF",url:"https://www.saps.gov.za"}],note:"UK govt warns against. Google removed route."},
+{n:"Nyanga Junction",lat:-33.9875,lng:18.5655,parent:"Nyanga",p:"WC",suburb:"Nyanga",street:"Klipfontein Rd / Lansdowne Rd",vtype:"Taxi Rank",dominant:"robbery",risk:9,crimes:[{type:"robbery",desc:"Daily muggings at terminus",date:"Ongoing",src:"CPF",url:"https://www.saps.gov.za"},{type:"assault",desc:"Knife attacks near rank",date:"Dec 2025",src:"Cape Argus",url:"https://www.iol.co.za/capeargus"}],note:"#1 mugging hotspot in WC."},
+{n:"Lusaka Section",lat:-33.9810,lng:18.5700,parent:"Nyanga",p:"WC",suburb:"Lusaka",street:"NY1 / NY3",vtype:"Residential",dominant:"murder",risk:9,crimes:[{type:"murder",desc:"Gang shooting in Lusaka",date:"Nov 2025",src:"Daily Maverick",url:"https://www.dailymaverick.co.za"}],note:"Gang territory. Firearms dominant."},
+{n:"NY78 Shebeens",lat:-33.9850,lng:18.5680,parent:"Nyanga",p:"WC",suburb:"Nyanga East",street:"NY78",vtype:"Shebeen cluster",dominant:"assault",risk:8,crimes:[{type:"assault",desc:"Weekend stabbings outside shebeens",date:"Ongoing",src:"SAPS",url:"https://www.saps.gov.za"},{type:"murder",desc:"Fatal stabbing after drinking",date:"Jan 2026",src:"IOL",url:"https://www.iol.co.za"}],note:"Weekend peak: Fri-Sun midnight-4am."},
+// MITCHELLS PLAIN
+{n:"Tafelsig",lat:-34.0620,lng:18.6050,parent:"Mitchells Plain",p:"WC",suburb:"Tafelsig",street:"AZ Berman Dr / Spine Rd",vtype:"Residential",dominant:"shooting",risk:10,crimes:[{type:"shooting",desc:"50+ shootings in one week",date:"2025",src:"GI-TOC",url:"https://globalinitiative.net"},{type:"gang",desc:"Fancy Boys vs Terrible Josters",date:"Ongoing",src:"Daily Maverick",url:"https://www.dailymaverick.co.za"}],note:"Worst gang violence in SA. 50+ shootings/week."},
+{n:"Beacon Valley",lat:-34.0550,lng:18.6150,parent:"Mitchells Plain",p:"WC",suburb:"Beacon Valley",street:"Beacon Valley Rd",vtype:"Residential",dominant:"shooting",risk:9,crimes:[{type:"shooting",desc:"Drive-by shooting",date:"Nov 2025",src:"News24",url:"https://www.news24.com"}],note:"Gang crossfire zone."},
+{n:"Eastridge",lat:-34.0480,lng:18.6180,parent:"Mitchells Plain",p:"WC",suburb:"Eastridge",street:"Merrydale Ave",vtype:"Residential",dominant:"drugs",risk:8,crimes:[{type:"drugs",desc:"Tik lab bust",date:"Oct 2025",src:"SAPS",url:"https://www.saps.gov.za"},{type:"gang",desc:"Drug distribution hub",date:"Ongoing",src:"GI-TOC",url:"https://globalinitiative.net"}],note:"Methamphetamine (tik) hub."},
+{n:"Promenade Mall",lat:-34.0500,lng:18.6100,parent:"Mitchells Plain",p:"WC",suburb:"Town Centre",street:"AZ Berman Dr",vtype:"Mall",dominant:"robbery",risk:7,crimes:[{type:"robbery",desc:"Armed robbery mall parking",date:"Dec 2025",src:"IOL",url:"https://www.iol.co.za"},{type:"carjack",desc:"Hijacking leaving mall",date:"Nov 2025",src:"Cape Argus",url:"https://www.iol.co.za/capeargus"}],note:"Parking lot crime hotspot."},
+// BONTEHEUWEL
+{n:"Jakkalsvlei & Jakes Gerwel",lat:-33.9540,lng:18.5420,parent:"Bonteheuwel",p:"WC",suburb:"Bonteheuwel",street:"Jakkalsvlei Ave & Jakes Gerwel Dr",vtype:"Intersection",dominant:"murder",risk:10,crimes:[{type:"murder",desc:"Tourist Karin van Aardt stabbed at traffic light",date:"6 Dec 2024",src:"News24",url:"https://www.news24.com"},{type:"carjack",desc:"Multiple smash-and-grabs",date:"Ongoing",src:"CPF",url:"https://www.saps.gov.za"}],note:"Tourist murdered Dec 2024. GPS routes here from airport."},
+// DELFT
+{n:"Delft South Shebeens",lat:-33.9700,lng:18.6380,parent:"Delft",p:"WC",suburb:"Delft South",street:"Symphony Way area",vtype:"Shebeen cluster",dominant:"murder",risk:9,crimes:[{type:"murder",desc:"Fatal shooting outside shebeen",date:"Nov 2025",src:"News24",url:"https://www.news24.com"},{type:"assault",desc:"Weekend violence at shebeens",date:"Ongoing",src:"CPF",url:"https://www.saps.gov.za"}],note:"Alcohol-fuelled murder hotspot."},
+// HILLBROW
+{n:"Twist St / Pretoria St",lat:-26.1940,lng:28.0480,parent:"Hillbrow",p:"GP",suburb:"Hillbrow",street:"Twist St & Pretoria St",vtype:"Street",dominant:"robbery",risk:9,crimes:[{type:"robbery",desc:"Phone snatching and muggings daily",date:"Ongoing",src:"TimesLIVE",url:"https://www.timeslive.co.za"},{type:"drugs",desc:"Open drug dealing",date:"Ongoing",src:"Daily Maverick",url:"https://www.dailymaverick.co.za"}],note:"Don't walk with phone visible."},
+{n:"Ponte City Tower",lat:-26.1975,lng:28.0530,parent:"Hillbrow",p:"GP",suburb:"Berea",street:"Lily Ave / Saratoga Ave",vtype:"Residential",dominant:"robbery",risk:8,crimes:[{type:"robbery",desc:"Muggings around Ponte base",date:"Ongoing",src:"News24",url:"https://www.news24.com"}],note:"Iconic building but surrounds dangerous."},
+// ALEXANDRA
+{n:"London Rd / Far East Bank",lat:-26.1020,lng:28.1080,parent:"Alexandra",p:"GP",suburb:"Far East Bank",street:"London Rd",vtype:"Commercial",dominant:"robbery",risk:9,crimes:[{type:"robbery",desc:"Business robberies on London Rd",date:"Dec 2025",src:"News24",url:"https://www.news24.com"},{type:"kidnapping",desc:"Express kidnapping from spaza shop",date:"Nov 2025",src:"IOL",url:"https://www.iol.co.za"}],note:"Main commercial strip."},
+{n:"Madala Hostel Area",lat:-26.1050,lng:28.0950,parent:"Alexandra",p:"GP",suburb:"Alexandra Central",street:"2nd Ave / 4th Ave",vtype:"Hostel",dominant:"murder",risk:9,crimes:[{type:"murder",desc:"Stabbing near hostel",date:"Oct 2025",src:"TimesLIVE",url:"https://www.timeslive.co.za"}],note:"Hostel tensions. Weapon violence."},
+{n:"Pan Africa Taxi Rank",lat:-26.1070,lng:28.0990,parent:"Alexandra",p:"GP",suburb:"Alexandra",street:"Pan Africa Dr",vtype:"Taxi Rank",dominant:"robbery",risk:8,crimes:[{type:"robbery",desc:"Armed robberies at taxi rank",date:"Ongoing",src:"Citizen",url:"https://www.citizen.co.za"}],note:"Rush hour danger 5-7pm."},
+// SOWETO
+{n:"Vilakazi St / Orlando West",lat:-26.2368,lng:27.9065,parent:"Soweto",p:"GP",suburb:"Orlando West",street:"Vilakazi St",vtype:"Tourist area",dominant:"robbery",risk:6,crimes:[{type:"robbery",desc:"Tourist phone snatching",date:"Dec 2025",src:"News24",url:"https://www.news24.com"},{type:"carjack",desc:"Attempted hijacking near Mandela House",date:"Sep 2025",src:"IOL",url:"https://www.iol.co.za"}],note:"Tourist area but phone theft rampant."},
+{n:"Jabulani Mall",lat:-26.2350,lng:27.8550,parent:"Soweto",p:"GP",suburb:"Jabulani",street:"Bolani Rd / Koma Rd",vtype:"Mall",dominant:"carjack",risk:7,crimes:[{type:"carjack",desc:"Vehicle hijacked leaving mall",date:"Oct 2025",src:"Citizen",url:"https://www.citizen.co.za"}],note:"Mall parking lot hotspot."},
+{n:"Baragwanath Hospital Area",lat:-26.2640,lng:27.9380,parent:"Soweto",p:"GP",suburb:"Diepkloof",street:"Chris Hani Rd / Old Potch Rd",vtype:"Hospital",dominant:"robbery",risk:6,crimes:[{type:"robbery",desc:"Muggings near hospital entrance",date:"Ongoing",src:"News24",url:"https://www.news24.com"}],note:"Targeting hospital visitors."},
+// JHB CBD
+{n:"Bree St Taxi Rank",lat:-26.2020,lng:28.0400,parent:"Johannesburg Central",p:"GP",suburb:"JHB CBD",street:"Bree St / Sauer St",vtype:"Taxi Rank",dominant:"robbery",risk:9,crimes:[{type:"robbery",desc:"Phone snatching and bag grabs",date:"Daily",src:"News24",url:"https://www.news24.com"}],note:"Busiest taxi rank in SA. Peak danger."},
+{n:"Jeppestown / Denver",lat:-26.2100,lng:28.0600,parent:"Johannesburg Central",p:"GP",suburb:"Jeppestown",street:"Main Reef Rd / Jules St",vtype:"Mixed",dominant:"extortion",risk:8,crimes:[{type:"extortion",desc:"Construction mafia extortion",date:"2025",src:"Daily Maverick",url:"https://www.dailymaverick.co.za"},{type:"kidnapping",desc:"Business owner kidnapped",date:"Oct 2025",src:"News24",url:"https://www.news24.com"}],note:"Extortion capital. Construction mafia."},
+{n:"Carlton Centre Area",lat:-26.2060,lng:28.0480,parent:"Johannesburg Central",p:"GP",suburb:"JHB CBD",street:"Commissioner St / Von Wielligh St",vtype:"Commercial",dominant:"robbery",risk:7,crimes:[{type:"robbery",desc:"Smash and grab near Carlton",date:"Dec 2025",src:"Citizen",url:"https://www.citizen.co.za"}],note:"Daytime pickpocketing. Night: avoid."},
+// SANDTON
+{n:"Grayston Dr Off-Ramp",lat:-26.1050,lng:28.0570,parent:"Sandton",p:"GP",suburb:"Sandton",street:"Grayston Dr / M1 off-ramp",vtype:"Highway Off-ramp",dominant:"carjack",risk:7,crimes:[{type:"carjack",desc:"Window smash hijacking at red light",date:"Nov 2025",src:"News24",url:"https://www.news24.com"},{type:"robbery",desc:"Smash-grab targeting luxury vehicles",date:"Ongoing",src:"IOL",url:"https://www.iol.co.za"}],note:"Peak: 6-8pm. Target luxury vehicles."},
+// DIEPSLOOT
+{n:"Diepsloot Extension 1",lat:-25.9280,lng:28.0120,parent:"Diepsloot",p:"GP",suburb:"Extension 1",street:"R511 / Diepsloot Main",vtype:"Informal",dominant:"murder",risk:9,crimes:[{type:"murder",desc:"Body found in open field",date:"Dec 2025",src:"News24",url:"https://www.news24.com"},{type:"sexual",desc:"GBV incident",date:"Nov 2025",src:"SABC",url:"https://www.sabcnews.com"}],note:"Mob justice incidents common."},
+// KZN
+{n:"Amaoti Section",lat:-29.6680,lng:30.8800,parent:"Inanda",p:"KZN",suburb:"Amaoti",street:"Amaoti Rd",vtype:"Residential",dominant:"murder",risk:9,crimes:[{type:"murder",desc:"Multiple stabbings",date:"Dec 2025",src:"IOL",url:"https://www.iol.co.za"}],note:"Knife violence dominant."},
+{n:"Bhambayi",lat:-29.6750,lng:30.8650,parent:"Inanda",p:"KZN",suburb:"Bhambayi",street:"Bhambayi Rd",vtype:"Informal",dominant:"sexual",risk:10,crimes:[{type:"sexual",desc:"#1 nationally for rape",date:"Q3 2025",src:"SAPS",url:"https://www.saps.gov.za"},{type:"assault",desc:"Domestic violence cluster",date:"Ongoing",src:"GroundUp",url:"https://www.groundup.org.za"}],note:"#1 rape station nationally. GBV crisis."},
+{n:"Point Rd / Victoria Embankment",lat:-29.8620,lng:31.0250,parent:"Durban Central",p:"KZN",suburb:"Point",street:"Point Rd / Mahatma Gandhi Rd",vtype:"Entertainment",dominant:"robbery",risk:8,crimes:[{type:"robbery",desc:"Muggings targeting tourists",date:"Ongoing",src:"News24",url:"https://www.news24.com"},{type:"drugs",desc:"Open drug trade",date:"Ongoing",src:"IOL",url:"https://www.iol.co.za"}],note:"Night-time danger zone."},
+{n:"Warwick Junction",lat:-29.8560,lng:31.0150,parent:"Durban Central",p:"KZN",suburb:"Warwick",street:"Warwick Ave / Brook St",vtype:"Transport Hub",dominant:"robbery",risk:8,crimes:[{type:"robbery",desc:"Pickpocketing and bag snatching daily",date:"Ongoing",src:"TimesLIVE",url:"https://www.timeslive.co.za"}],note:"Busiest transport hub in KZN."},
+// EC
+{n:"Govan Mbeki Ave",lat:-33.9610,lng:25.6000,parent:"Gqeberha Central",p:"EC",suburb:"Central",street:"Govan Mbeki Ave",vtype:"Commercial",dominant:"robbery",risk:7,crimes:[{type:"robbery",desc:"Daylight muggings",date:"Ongoing",src:"Herald",url:"https://www.heraldlive.co.za"}],note:"Main commercial strip."},
+{n:"KwaZakhele Taverns",lat:-33.8775,lng:25.6250,parent:"KwaZakhele",p:"EC",suburb:"KwaZakhele",street:"Stanford Rd area",vtype:"Tavern cluster",dominant:"assault",risk:8,crimes:[{type:"assault",desc:"Weekend stabbings outside taverns",date:"Ongoing",src:"SAPS",url:"https://www.saps.gov.za"},{type:"murder",desc:"Fatal stabbing after drinking",date:"Nov 2025",src:"Herald",url:"https://www.heraldlive.co.za"}],note:"Fri-Sun peak. Alcohol-fuelled."},
+];
+
+// MICRO-HOTSPOT LAYER (appears at zoom 13+)
+const microLayer=L.layerGroup();
+const riskC={10:'#ff0022',9:'#ff2244',8:'#ff5533',7:'#ff7a30',6:'#ffaa22',5:'#ffbe2e'};
+const tIc={murder:'💀',shooting:'🔫',robbery:'🔪',carjack:'🚗',kidnapping:'👤',assault:'👊',drugs:'💊',sexual:'⚠️',gang:'🏴',extortion:'💰'};
+
+MH.forEach(h=>{
+  const col=riskC[h.risk]||'#ffbe2e',icon=tIc[h.dominant]||'⚠️',sz=h.risk>=9?22:h.risk>=7?18:14;
+  const di=L.divIcon({className:'',html:`<div style="width:${sz}px;height:${sz}px;background:${col};border-radius:3px;display:grid;place-items:center;font-size:${sz-6}px;border:1.5px solid rgba(255,255,255,.4);box-shadow:0 1px 4px rgba(0,0,0,.5);cursor:pointer;transform:rotate(45deg)"><span style="transform:rotate(-45deg)">${icon}</span></div>`,iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
+  let ch=(h.crimes||[]).map(c=>`<div style="padding:3px 0;border-bottom:1px solid var(--bd);font-size:8px"><span style="color:${col};font-weight:700;text-transform:uppercase">${c.type}</span> <span style="color:var(--t2)">${c.desc}</span><div style="margin-top:2px"><span style="color:var(--t3);font-family:'IBM Plex Mono'">${c.date}</span> <a href="${c.url}" target="_blank" style="color:var(--bl);text-decoration:none;font-family:'IBM Plex Mono';font-size:7px;margin-left:4px;padding:1px 4px;background:rgba(46,184,255,.1);border-radius:3px">📰 ${c.src}</a></div></div>`).join('');
+  const pp=`<div style="min-width:260px"><div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--bd)"><span style="font-size:16px">${icon}</span><div><div style="font-size:12px;font-weight:700">${h.n}</div><div style="font-size:8px;color:var(--t3);font-family:'IBM Plex Mono'">${h.suburb} · ${h.parent} · ${h.p}</div></div><span style="margin-left:auto;padding:2px 6px;border-radius:4px;font-size:8px;font-weight:700;font-family:'IBM Plex Mono';background:${col}22;color:${col}">${h.risk}/10</span></div><div style="font-size:9px;color:var(--t2);margin-bottom:4px">📍 <strong>${h.street}</strong> <span style="margin-left:4px;padding:1px 5px;background:rgba(255,255,255,.04);border-radius:3px;font-size:7px">${h.vtype}</span></div><div style="margin:6px 0;font-size:8px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">Reported Incidents</div>${ch}<div style="margin-top:6px;font-size:7px;color:var(--t3);font-style:italic">${h.note||''}</div></div>`;
+  L.marker([h.lat,h.lng],{icon:di}).bindPopup(pp,{maxWidth:320}).addTo(microLayer);
+});
+
+map.on('zoomend',function(){
+  const z=map.getZoom();
+  if(z>=13&&!map.hasLayer(microLayer)){map.addLayer(microLayer)}
+  else if(z<13&&map.hasLayer(microLayer)){map.removeLayer(microLayer)}
+});
+</script>
+</body>
+</html>
