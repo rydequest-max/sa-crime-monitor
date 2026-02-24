@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+data/feed_cache.json
+.DS_Store
